@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數感勇者：城堡大進擊</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f1c40f;
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: '微軟正黑體', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .game-container {
+            background-color: var(--card-bg);
+            width: 90%;
+            max-width: 600px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 600px; /*稍微加高以容納地圖*/
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* --- New Feature: Progress Map --- */
+        .map-area {
+            margin-bottom: 20px;
+            padding: 10px 0;
+            position: relative;
+            height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .track-bg {
+            width: 100%;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .track-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .hero-marker {
+            position: absolute;
+            font-size: 35px;
+            top: -15px; /* 讓勇者站在線上 */
+            left: 0%;
+            transform: translateX(-10px); /* 修正中心點 */
+            transition: left 0.5s ease;
+            z-index: 2;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+        }
+
+        .castle-marker {
+            position: absolute;
+            font-size: 40px;
+            right: 0;
+            top: -20px;
+            z-index: 2;
+        }
+        /* -------------------------------- */
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #eef2f7;
+            border-radius: 15px;
+            font-size: 1.1rem;
+        }
+
+        .hearts { color: var(--danger-color); }
+        .score-text { font-weight: bold; color: #555; }
+
+        .monster-stage {
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .monster-emoji {
+            font-size: 80px;
+            transition: transform 0.2s;
+        }
+
+        .monster-name {
+            font-weight: bold;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .hit-effect {
+            position: absolute;
+            font-size: 40px;
+            font-weight: bold;
+            color: var(--danger-color);
+            opacity: 0;
+            top: 0;
+            pointer-events: none;
+        }
+
+        .question-box {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px dashed #d1d8e0;
+        }
+
+        .highlight {
+            color: var(--danger-color);
+            font-weight: 900;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .option-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 1.3rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 4px 0 #357abd;
+        }
+
+        .option-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* Start & End Screens */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--card-bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .start-btn, .restart-btn {
+            background-color: var(--success-color);
+            color: white;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 5px 0 #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        /* Modal/Feedback */
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            border-radius: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            width: 85%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            animation: popIn 0.3s;
+        }
+
+        .feedback-title { font-size: 1.5rem; margin-bottom: 10px; }
+        .feedback-text {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 20px;
+            text-align: left;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .next-btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 30px;
+            border-radius: 20px;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #357abd;
+        }
+        .next-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes monsterHit { 0% { transform: scale(1); } 50% { transform: scale(0.8) rotate(10deg); filter: grayscale(100%); } 100% { transform: scale(1); } }
+
+        .shake-anim { animation: shake 0.5s; }
+        .hit-anim { animation: monsterHit 0.4s; }
+
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    
+    <!-- Game Area -->
+    <div id="game-screen">
+        <div class="header">
+            <div class="hearts" id="hearts-display">❤️❤️❤️❤️❤️</div>
+            <div class="score-text">關卡: <span id="level-display">1/20</span></div>
+        </div>
+
+        <!-- NEW: Progress Map -->
+        <div class="map-area">
+            <div class="track-bg">
+                <div class="track-fill" id="track-fill"></div>
+            </div>
+            <div class="hero-marker" id="hero-marker">🤺</div>
+            <div class="castle-marker">🏰</div>
+        </div>
+
+        <div class="monster-stage">
+            <div class="hit-effect" id="hit-msg">-1 HP</div>
+            <div class="monster-emoji" id="monster-emoji">👾</div>
+            <div class="monster-name" id="monster-name">史萊姆</div>
+        </div>
+
+        <div class="question-box" id="question-text">
+            題目載入中...
+        </div>
+
+        <div class="options-grid" id="options-container">
+            <!-- Buttons generated by JS -->
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <h1>數感勇者<br>城堡大進擊</h1>
+        <p style="margin: 20px; color: #666;">打敗 20 隻擋路的怪獸<br>一步步走向城堡！</p>
+        <div style="font-size: 3rem;">🏰🏃💨</div>
+        <button class="start-btn" onclick="startGame()">出發冒險</button>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="screen hidden">
+        <h1 id="end-title">遊戲結束</h1>
+        <div id="end-emoji" style="font-size: 4rem; margin: 20px;">🏆</div>
+        <p id="end-msg" style="font-size: 1.2rem; padding: 0 20px;">你抵達城堡了！</p>
+        <p>最終分數: <span id="final-score">0</span>/20</p>
+        <button class="restart-btn" onclick="startGame()">再次挑戰</button>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="feedback-title" id="fb-title"></div>
+            <div class="feedback-text" id="fb-text"></div>
+            <button class="next-btn" onclick="nextQuestion()">下一關 ➔</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const questions = [
+        // 第一關：關鍵字混淆
+        {
+            q: "盤子裡有 8 顆草莓，弟弟吃掉了 3 顆，請問盤子裡<span class='highlight'>剩下</span>幾顆草莓？",
+            options: [5, 11, 3],
+            ans: 0,
+            monster: "🟢 貪吃史萊姆",
+            tip: "看到「吃掉」和「剩下」，應該是用減法 (8 - 3) 喔！"
+        },
+        {
+            q: "小明有 6 枝鉛筆，小華也有 6 枝鉛筆，請問他們<span class='highlight'>一共有</span>幾枝鉛筆？",
+            options: [0, 6, 12],
+            ans: 2,
+            monster: "👯 雙胞胎精靈",
+            tip: "「一共」就是把兩個人的加起來 (6 + 6)！"
+        },
+        {
+            q: "紅色氣球有 10 個，藍色氣球有 4 個，請問紅色氣球比藍色氣球<span class='highlight'>多幾個</span>？",
+            options: [14, 6, 4],
+            ans: 1,
+            monster: "🎈 氣球幽靈",
+            tip: "比較誰比較多，要用減法算差距 (10 - 4)！"
+        },
+        {
+            q: "冰箱裡有 7 罐牛奶，媽媽<span class='highlight'>又買回來</span> 5 罐，現在冰箱裡有幾罐牛奶？",
+            options: [2, 12, 7],
+            ans: 1,
+            monster: "🐮 牛奶巨怪",
+            tip: "「又買回來」是變多了，要用加法 (7 + 5) 喔！"
+        },
+        
+        // 第二關：多餘數字陷阱
+        {
+            q: "池塘裡有 5 隻鴨子，3 隻青蛙，岸邊還有 <span class='highlight'>2 棵樹</span>。請問池塘裡共有幾隻<span class='highlight'>動物</span>？",
+            options: [10, 8, 5],
+            ans: 1,
+            monster: "🌳 偽裝樹妖",
+            tip: "小心！「樹」不是動物，不要加進去。只要算鴨子和青蛙 (5 + 3)！"
+        },
+        {
+            q: "公車上原本有 10 個人，到了車站下車 3 人，公車編號是 <span class='highlight'>202 號</span>。請問現在車上有幾個人？",
+            options: [7, 205, 13],
+            ans: 0,
+            monster: "🚌 巴士怪客",
+            tip: "公車號碼 202 是名字，不能拿來算！只要算人數 (10 - 3)。"
+        },
+        {
+            q: "小花今年 <span class='highlight'>8 歲</span>，她養了一隻 2 歲的貓和一隻 3 歲的狗。請問<span class='highlight'>貓和狗</span>一共幾歲？",
+            options: [13, 5, 8],
+            ans: 1,
+            monster: "🐶 寵物大師",
+            tip: "題目只問「貓和狗」，小花的 8 歲是多餘的數字喔！"
+        },
+        {
+            q: "桌上有 9 塊餅乾，小狗偷吃了 2 塊，現在是<span class='highlight'>下午 3 點</span>。請問還剩下幾塊餅乾？",
+            options: [4, 10, 7],
+            ans: 2,
+            monster: "⏰ 時間小偷",
+            tip: "時間「3點」跟餅乾數量沒關係，不要被騙了！(9 - 2)。"
+        },
+
+        // 第三關：語意邏輯
+        {
+            q: "哥哥有 8 顆糖果，<span class='highlight'>弟弟比哥哥少 3 顆</span>。請問<span class='highlight'>弟弟</span>有幾顆糖果？",
+            options: [11, 5, 3],
+            ans: 1,
+            monster: "🍭 糖果惡魔",
+            tip: "弟弟比較少，所以要用哥哥的糖果去減 (8 - 3)。"
+        },
+        {
+            q: "排隊買票，小明前面有 4 個人，後面有 2 個人。請問這一排<span class='highlight'>不包含小明</span>共有幾個人？",
+            options: [6, 7, 4],
+            ans: 0,
+            monster: "🚶 排隊殭屍",
+            tip: "題目說「不包含小明」，所以只要算前面加後面 (4 + 2)。"
+        },
+        {
+            q: "盒子裡有 5 顆紅球，<span class='highlight'>綠球比紅球多 2 顆</span>。請問<span class='highlight'>綠球</span>有幾顆？",
+            options: [7, 3, 2],
+            ans: 0,
+            monster: "🎾 彈跳怪球",
+            tip: "綠球比較多，所以要用紅球加 2 (5 + 2)。"
+        },
+        {
+            q: "小華有 10 元，買鉛筆花了 7 元，媽媽<span class='highlight'>又給他</span> 5 元。請問他現在口袋裡有多少錢？",
+            options: [3, 8, 12],
+            ans: 1,
+            monster: "💰 錢包妖精",
+            tip: "要一步一步算：先花錢 (10-7=3)，再拿到錢 (3+5=8)。"
+        },
+
+        // 第四關：點數與視覺
+        {
+            q: "圖上有：⚪⚪⚪⚪ ⚫⚫⚫<br>請問白球和黑球<span class='highlight'>相差</span>幾顆？",
+            options: [7, 4, 1],
+            ans: 2,
+            monster: "👁️ 獨眼巨人",
+            tip: "白球4個，黑球3個，相差就是減法 (4 - 3)。"
+        },
+        {
+            q: "小明從第 1 頁讀到第 5 頁，請問他一共讀了幾頁？<br>(伸出手指頭數數看)",
+            options: [4, 5, 6],
+            ans: 1,
+            monster: "📚 書本怪獸",
+            tip: "用手指數：1、2、3、4、5，總共有 5 頁喔！直接減會少算一頁。"
+        },
+        {
+            q: "排隊隊伍中，小美排在第 3 個，小強排在第 7 個。請問他們<span class='highlight'>中間</span>隔了幾個人？",
+            options: [3, 4, 5],
+            ans: 0,
+            monster: "🚧 阻擋怪",
+            tip: "他們中間是：第4、第5、第6個，所以是 3 個人。"
+        },
+        {
+            q: "樹上有 5 隻鳥，3 隻鳥在飛。<span class='highlight'>地上</span>有幾隻鳥？",
+            options: [8, 2, 0],
+            ans: 2,
+            monster: "🦅 飛天鷹",
+            tip: "題目問地上，但鳥都在樹上或天上，所以地上是 0 隻！"
+        },
+
+        // 第五關：大魔王綜合題
+        {
+            q: "媽媽準備了 9 片芝士和 3 塊餅乾，請問<span class='highlight'>芝士比餅乾</span>多幾個？",
+            options: [12, 6, 9],
+            ans: 1,
+            monster: "🧀 芝士魔王",
+            tip: "這是在比較數量，不是算總數喔！要用減法 (9 - 3)。"
+        },
+        {
+            q: "停車場有 10 輛車，開走了 4 輛，又開走了 2 輛。請問停車場<span class='highlight'>一共少了</span>幾輛車？",
+            options: [4, 6, 8],
+            ans: 1,
+            monster: "🚗 廢氣龍",
+            tip: "題目問「少了幾輛」，所以要把兩次開走的加起來 (4 + 2)。"
+        },
+        {
+            q: "一盒雞蛋有 10 顆，煮了 3 顆，<span class='highlight'>打破了 1 顆</span>。請問還<span class='highlight'>剩下</span>幾顆完整的？",
+            options: [7, 6, 8],
+            ans: 1,
+            monster: "🥚 搗蛋蛋",
+            tip: "煮掉要減，打破也要減喔！(10 - 3 - 1)。"
+        },
+        {
+            q: "【終極BOSS】<br>橡皮擦 5 元，尺 15 元。小明有 10 元想買尺，請問他<span class='highlight'>還不夠</span>多少錢？",
+            options: [5, 25, 10],
+            ans: 0,
+            monster: "🐉 數學惡龍",
+            tip: "尺要15元，他只有10元。差距是 (15 - 10) = 5元。"
+        }
+    ];
+
+    let currentQ = 0;
+    let hp = 5;
+    let score = 0;
+
+    window.onload = function() {
+        document.getElementById('feedback-modal').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    };
+
+    function startGame() {
+        currentQ = 0;
+        hp = 5;
+        score = 0;
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('feedback-modal').classList.add('hidden');
+        updateStats();
+        updateMap();
+        loadQuestion();
+    }
+
+    // 更新地圖勇者位置
+    function updateMap() {
+        const total = questions.length;
+        // 計算百分比，最大不超過 92% (預留空間給城堡)
+        const percentage = Math.min((currentQ / total) * 100, 92);
+        
+        document.getElementById('track-fill').style.width = percentage + "%";
+        document.getElementById('hero-marker').style.left = percentage + "%";
+    }
+
+    function updateStats() {
+        let heartStr = "";
+        for(let i=0; i<hp; i++) heartStr += "❤️";
+        for(let i=hp; i<5; i++) heartStr += "🖤";
+        document.getElementById('hearts-display').innerText = heartStr;
+        document.getElementById('level-display').innerText = (currentQ + 1) + "/20";
+        updateMap(); // 每次更新數據同時移動勇者
+    }
+
+    function loadQuestion() {
+        if (currentQ >= questions.length) {
+            endGame();
+            return;
+        }
+
+        const q = questions[currentQ];
+        document.getElementById('question-text').innerHTML = q.q;
+        
+        const monsterEmoji = q.monster.split(' ')[0];
+        const monsterName = q.monster.split(' ')[1];
+        document.getElementById('monster-emoji').innerText = monsterEmoji;
+        document.getElementById('monster-name').innerText = monsterName;
+        document.getElementById('monster-emoji').classList.remove('hit-anim');
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = "";
+        
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(index);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex) {
+        const q = questions[currentQ];
+        const modal = document.getElementById('feedback-modal');
+        const title = document.getElementById('fb-title');
+        const text = document.getElementById('fb-text');
+
+        if (selectedIndex === q.ans) {
+            score++;
+            document.getElementById('monster-emoji').classList.add('hit-anim');
+            playSuccessEffect(selectedIndex);
+        } else {
+            hp--;
+            updateStats();
+            document.querySelector('.game-container').classList.add('shake-anim');
+            setTimeout(() => document.querySelector('.game-container').classList.remove('shake-anim'), 500);
+
+            if (hp <= 0) {
+                title.innerText = "💔 被怪獸攻擊了！";
+                title.style.color = "var(--danger-color)";
+                text.innerHTML = `正確答案是 <b>${q.options[q.ans]}</b>。<br><br>💡 導師提示：<br>${q.tip}<br><br>(生命值歸零，遊戲結束)`;
+                modal.classList.remove('hidden');
+            } else {
+                title.innerText = "💥 哎呀，受傷了！";
+                title.style.color = "var(--danger-color)";
+                text.innerHTML = `正確答案是 <b>${q.options[q.ans]}</b>。<br><br>💡 導師提示：<br>${q.tip}`;
+                modal.classList.remove('hidden');
+            }
+        }
+    }
+
+    function playSuccessEffect(index) {
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons[index].style.backgroundColor = "#2ecc71";
+        buttons[index].style.boxShadow = "0 4px 0 #27ae60";
+        
+        setTimeout(() => {
+            currentQ++;
+            updateStats(); // 這裡更新 stats 會觸發 updateMap，勇者移動
+            loadQuestion();
+        }, 800);
+    }
+
+    function nextQuestion() {
+        document.getElementById('feedback-modal').classList.add('hidden');
+        if (hp <= 0) {
+            endGame();
+        } else {
+            currentQ++;
+            updateStats(); // 這裡也會觸發勇者移動
+            loadQuestion();
+        }
+    }
+
+    function endGame() {
+        const endScreen = document.getElementById('end-screen');
+        const endTitle = document.getElementById('end-title');
+        const endMsg = document.getElementById('end-msg');
+        const endEmoji = document.getElementById('end-emoji');
+        
+        document.getElementById('game-screen').style.display = 'block'; 
+        endScreen.classList.remove('hidden');
+        document.getElementById('final-score').innerText = score;
+
+        // 確保勇者最後到達終點
+        document.getElementById('track-fill').style.width = "92%";
+        document.getElementById('hero-marker').style.left = "92%";
+
+        if (hp > 0 && score >= 15) {
+            endTitle.innerText = "🎉 任務成功！";
+            endMsg.innerText = "太厲害了！勇者成功進入城堡！";
+            endEmoji.innerText = "🏰✨";
+        } else if (hp > 0) {
+            endTitle.innerText = "✨ 冒險完成";
+            endMsg.innerText = "雖然到了城堡，但可以做得更好喔！";
+            endEmoji.innerText = "🛡️";
+        } else {
+            endTitle.innerText = "💀 任務失敗";
+            endMsg.innerText = "勇者倒在半路上了... 請再試一次！";
+            endEmoji.innerText = "👻";
+        }
+    }
+
+</script>
+
+</body>
+</html>
